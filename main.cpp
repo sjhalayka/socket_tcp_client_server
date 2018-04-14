@@ -184,7 +184,7 @@ int main(int argc, char **argv)
 				{
 					cout << "  Send error " << WSAGetLastError() << endl;
 					cleanup();
-					return 6;
+					return 3;
 				}
 			}
 		}
@@ -196,7 +196,7 @@ int main(int argc, char **argv)
 		TCP_server ts;
 
 		if (false == ts.init(port_number))
-			return 3;
+			return 4;
 
 		while (!stop)
 		{
@@ -226,7 +226,7 @@ int main(int argc, char **argv)
 				{
 					cout << "  Receive error." << endl;
 					cleanup();
-					return 12;
+					return 5;
 				}
 			}
 			else
@@ -264,7 +264,7 @@ int main(int argc, char **argv)
 					{
 						cout << "  Connection throttled to death." << endl;
 						cleanup();
-						return 13;
+						return 6;
 					}
 				}
 			}
