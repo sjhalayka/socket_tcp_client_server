@@ -3,8 +3,6 @@
 #include <windows.h>
 #pragma comment(lib, "ws2_32")
 
-#include "socket.h"
-
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -17,7 +15,8 @@ using std::ostringstream;
 using std::ios;
 
 bool stop = false;
-//SOCKET tcp_socket = INVALID_SOCKET;
+SOCKET tcp_socket = INVALID_SOCKET;
+SOCKET accept_socket = INVALID_SOCKET;
 enum program_mode { talk_mode, listen_mode };
 
 void print_usage(void)
@@ -84,6 +83,7 @@ bool init_winsock(void)
 BOOL console_control_handler(DWORD control_type)
 {
 	stop = true;
+	closesocket(tcp_socket);
 	return TRUE;
 }
 
@@ -132,11 +132,129 @@ void cleanup(void)
 		cout << endl << "  Stopping." << endl;
 	}
 
+	// if the socket is still open, close it
+	if (INVALID_SOCKET != tcp_socket)
+		closesocket(tcp_socket);
+
+	if (INVALID_SOCKET != accept_socket)
+		closesocket(accept_socket);
+
 	// shut down winsock
 	WSACleanup();
 
 	// remove the console control handler
 	SetConsoleCtrlHandler((PHANDLER_ROUTINE)console_control_handler, FALSE);
+}
+
+bool talk_mode_init(string hostname, long unsigned int port_number)
+{
+	struct addrinfo hints;
+	struct addrinfo *result;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_family = AF_INET;
+	hints.ai_socktype = SOCK_STREAM;
+	hints.ai_flags = 0;
+	hints.ai_protocol = IPPROTO_TCP;
+
+	ostringstream oss;
+	oss << port_number;
+
+	if (0 != getaddrinfo(hostname.c_str(), oss.str().c_str(), &hints, &result))
+	{
+		cout << "  getaddrinfo error." << endl;
+		freeaddrinfo(result);
+		cleanup();
+		return false;
+	}
+
+	if (INVALID_SOCKET == (tcp_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)))
+	{
+		cout << "  Could not allocate a new socket." << endl;
+		freeaddrinfo(result);
+		cleanup();
+		return false;
+	}
+
+	if (SOCKET_ERROR == connect(tcp_socket, (struct sockaddr *)result->ai_addr, sizeof(struct sockaddr)))
+	{
+		cout << "  Connect error." << endl;
+		freeaddrinfo(result);
+		cleanup();
+		return false;
+	}
+
+	long unsigned int nb = 1;
+	if (SOCKET_ERROR == ioctlsocket(tcp_socket, FIONBIO, &nb))
+	{
+		cout << "  Setting non-blocking mode failed." << endl;
+		freeaddrinfo(result);
+		cleanup();
+		return false;
+	}
+
+	return true;
+}
+
+bool listen_mode_init(long unsigned int port_number)
+{
+	struct sockaddr_in my_addr;
+	int sock_addr_len = sizeof(struct sockaddr);
+	my_addr.sin_family = AF_INET;
+	my_addr.sin_port = htons((unsigned short int)port_number);
+	my_addr.sin_addr.s_addr = INADDR_ANY;
+	memset(&(my_addr.sin_zero), '\0', 8);
+
+	if (INVALID_SOCKET == (tcp_socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)))
+	{
+		cout << "  Could not allocate a new socket." << endl;
+		cleanup();
+		return false;
+	}
+
+	if (SOCKET_ERROR == bind(tcp_socket, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)))
+	{
+		cout << "  Could not bind socket to port " << port_number << "." << endl;
+		cleanup();
+		return false;
+	}
+
+	if (SOCKET_ERROR == listen(tcp_socket, 0))
+	{
+		cout << "  Listen error." << endl;
+		cleanup();
+		return false;
+	}
+
+	long unsigned int nb = 1;
+	if (SOCKET_ERROR == ioctlsocket(tcp_socket, FIONBIO, &nb))
+	{
+		cout << "  Setting non-blocking mode failed." << endl;
+		cleanup();
+		return false;
+	}
+
+	return true;
+}
+
+bool listen_mode_check_for_incoming_connection(long unsigned int port_number)
+{
+	struct sockaddr_in my_addr;
+	int sock_addr_len = sizeof(struct sockaddr);
+	my_addr.sin_family = AF_INET;
+	my_addr.sin_port = htons((unsigned short int)port_number);
+	my_addr.sin_addr.s_addr = INADDR_ANY;
+	memset(&(my_addr.sin_zero), '\0', 8);
+
+	if (INVALID_SOCKET == (accept_socket = accept(tcp_socket, (struct sockaddr *) &my_addr, &sock_addr_len)))
+	{
+		if (WSAEWOULDBLOCK != WSAGetLastError())
+			cout << "  Accept error." << endl;
+
+		return false;
+	}
+
+	return true;
 }
 
 int main(int argc, char **argv)
@@ -162,14 +280,12 @@ int main(int argc, char **argv)
 	{
 		cout << "  Talking on TCP port " << port_number << " - CTRL+C to exit." << endl;
 
-		TCP_client tc;
-
-		if (false == tc.init(target_host_string, port_number))
-			return 10;
+		if (false == talk_mode_init(target_host_string, port_number))
+			return 2;
 
 		while (!stop)
 		{
-			if (SOCKET_ERROR == (tc.send_data(tx_buf, tx_buf_size, 0)))
+			if (SOCKET_ERROR == (send(tcp_socket, tx_buf, tx_buf_size, 0)))
 			{
 				if (WSAEWOULDBLOCK != WSAGetLastError() && !stop)
 				{
@@ -184,14 +300,12 @@ int main(int argc, char **argv)
 	{
 		cout << "  Listening on TCP port " << port_number << " - CTRL+C to exit." << endl;
 
-		TCP_server ts;
-
-		if (false == ts.init(port_number))
-			return 10;
+		if (false == listen_mode_init(port_number))
+			return 3;
 
 		while (!stop)
 		{
-			if (true == ts.check_for_pending_connection())
+			if (true == listen_mode_check_for_incoming_connection(port_number))
 				break;
 		}
 
@@ -211,13 +325,13 @@ int main(int argc, char **argv)
 		{
 			start_loop_ticks = GetTickCount();
 
-			if (SOCKET_ERROR == (temp_bytes_received = ts.recv_data(rx_buf, rx_buf_size, 0)))
+			if (SOCKET_ERROR == (temp_bytes_received = recv(accept_socket, rx_buf, rx_buf_size, 0)))
 			{
 				if (WSAEWOULDBLOCK != WSAGetLastError() && !stop)
 				{
 					cout << "  Receive error." << endl;
 					cleanup();
-					return 11;
+					return 12;
 				}
 			}
 			else
@@ -255,7 +369,7 @@ int main(int argc, char **argv)
 					{
 						cout << "  Connection throttled to death." << endl;
 						cleanup();
-						return 12;
+						return 13;
 					}
 				}
 			}
