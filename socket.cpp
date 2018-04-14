@@ -14,6 +14,8 @@ bool TCP_server::init(const long unsigned int src_port_number)
 {
 	close();
 
+	port_number = src_port_number;
+
 	struct sockaddr_in my_addr;
 	int sock_addr_len = sizeof(struct sockaddr);
 	my_addr.sin_family = AF_INET;
@@ -57,8 +59,6 @@ bool TCP_server::check_for_pending_connection(void)
 	my_addr.sin_port = htons((unsigned short int)port_number);
 	my_addr.sin_addr.s_addr = INADDR_ANY;
 	memset(&(my_addr.sin_zero), '\0', 8);
-
-	SOCKET accept_socket = INVALID_SOCKET;
 
 	if (INVALID_SOCKET == (accept_socket = accept(tcp_socket, (struct sockaddr *) &my_addr, &sock_addr_len)))
 	{
@@ -105,8 +105,6 @@ TCP_client::~TCP_client(void)
 bool TCP_client::init(const string src_hostname, const long unsigned int src_port_number)
 {
 	close();
-
-	struct addrinfo *resolved_addrinfo;
 
 	hostname = src_hostname;
 	port_number = src_port_number;

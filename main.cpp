@@ -3,6 +3,8 @@
 #include <windows.h>
 #pragma comment(lib, "ws2_32")
 
+#include "socket.h"
+
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -280,16 +282,18 @@ int main(int argc, char **argv)
 	{
 		cout << "  Talking on TCP port " << port_number << " - CTRL+C to exit." << endl;
 
-		if (false == talk_mode_init(target_host_string, port_number))
+		TCP_client tc;
+
+		if (false == tc.init(target_host_string, port_number))
 			return 2;
 
 		while (!stop)
 		{
-			if (SOCKET_ERROR == (send(tcp_socket, tx_buf, tx_buf_size, 0)))
+			if (SOCKET_ERROR == (tc.send_data(tx_buf, tx_buf_size, 0)))
 			{
 				if (WSAEWOULDBLOCK != WSAGetLastError() && !stop)
 				{
-					cout << "  Send error." << endl;
+					cout << "  Send error " << WSAGetLastError() << endl;
 					cleanup();
 					return 6;
 				}
@@ -300,12 +304,14 @@ int main(int argc, char **argv)
 	{
 		cout << "  Listening on TCP port " << port_number << " - CTRL+C to exit." << endl;
 
-		if (false == listen_mode_init(port_number))
+		TCP_server ts;
+
+		if (false == ts.init(port_number))
 			return 3;
 
 		while (!stop)
 		{
-			if (true == listen_mode_check_for_incoming_connection(port_number))
+			if (true == ts.check_for_pending_connection())
 				break;
 		}
 
@@ -325,7 +331,7 @@ int main(int argc, char **argv)
 		{
 			start_loop_ticks = GetTickCount();
 
-			if (SOCKET_ERROR == (temp_bytes_received = recv(accept_socket, rx_buf, rx_buf_size, 0)))
+			if (SOCKET_ERROR == (temp_bytes_received = ts.recv_data(rx_buf, rx_buf_size, 0)))
 			{
 				if (WSAEWOULDBLOCK != WSAGetLastError() && !stop)
 				{
