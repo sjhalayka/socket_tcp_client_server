@@ -140,7 +140,7 @@ void cleanup(void)
 
 int main(int argc, char **argv)
 {
-	cout << endl << "tcpspeed 1.2 - TCP speed tester" << endl << "Copyright 2018, Shawn Halayka" << endl << endl;
+	cout << endl << "tcpspeed 2.0 - TCP speed tester" << endl << "Copyright 2018, Shawn Halayka" << endl << endl;
 
 	program_mode mode = listen_mode;
 	string target_host_string = "";
