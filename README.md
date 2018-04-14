@@ -1,1 +1,1 @@
-Sockets classes, for TCP client and TCP server. Windows sockets.
+Public domain. Line speed tester. Uses Transmission Control Protocol (TCP).
