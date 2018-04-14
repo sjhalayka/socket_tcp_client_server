@@ -17,8 +17,6 @@ using std::ostringstream;
 using std::ios;
 
 bool stop = false;
-SOCKET tcp_socket = INVALID_SOCKET;
-SOCKET accept_socket = INVALID_SOCKET;
 enum program_mode { talk_mode, listen_mode };
 
 void print_usage(void)
@@ -85,7 +83,6 @@ bool init_winsock(void)
 BOOL console_control_handler(DWORD control_type)
 {
 	stop = true;
-	closesocket(tcp_socket);
 	return TRUE;
 }
 
@@ -133,13 +130,6 @@ void cleanup(void)
 		cout.flush();
 		cout << endl << "  Stopping." << endl;
 	}
-
-	// if the socket is still open, close it
-	if (INVALID_SOCKET != tcp_socket)
-		closesocket(tcp_socket);
-
-	if (INVALID_SOCKET != accept_socket)
-		closesocket(accept_socket);
 
 	// shut down winsock
 	WSACleanup();
@@ -224,7 +214,7 @@ int main(int argc, char **argv)
 			{
 				if (WSAEWOULDBLOCK != WSAGetLastError() && !stop)
 				{
-					cout << "  Receive error." << endl;
+					cout << "  Receive error " << WSAGetLastError() << endl;
 					cleanup();
 					return 5;
 				}

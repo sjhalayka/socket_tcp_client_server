@@ -31,20 +31,20 @@ bool TCP_server::init(const long unsigned int src_port_number)
 
 	if (SOCKET_ERROR == bind(tcp_socket, (struct sockaddr *) &my_addr, sizeof(struct sockaddr)))
 	{
-		cout << "  Could not bind socket to port " << port_number << "." << endl;
+		cout << "  Could not bind socket to port " << port_number << ", " << WSAGetLastError() << endl;
 		return false;
 	}
 
 	if (SOCKET_ERROR == listen(tcp_socket, 0))
 	{
-		cout << "  Listen error." << endl;
+		cout << "  Listen error " << WSAGetLastError() << endl;
 		return false;
 	}
 
 	long unsigned int nb = 1;
 	if (SOCKET_ERROR == ioctlsocket(tcp_socket, FIONBIO, &nb))
 	{
-		cout << "  Setting non-blocking mode failed." << endl;
+		cout << "  Setting non-blocking mode failed, " << WSAGetLastError() << endl;
 		return false;
 	}
 
@@ -63,7 +63,7 @@ bool TCP_server::check_for_pending_connection(void)
 	if (INVALID_SOCKET == (accept_socket = accept(tcp_socket, (struct sockaddr *) &my_addr, &sock_addr_len)))
 	{
 		if (WSAEWOULDBLOCK != WSAGetLastError())
-			cout << "  Accept error." << endl;
+			cout << "  Accept error " << WSAGetLastError() << endl;
 
 		return false;
 	}
