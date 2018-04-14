@@ -27,7 +27,7 @@ public:
 	int recv_data(char *buf, int len, int flags);
 	void close(void);
 
-public:
+protected:
 	SOCKET tcp_socket, accept_socket;
 	long unsigned int port_number;
 };
