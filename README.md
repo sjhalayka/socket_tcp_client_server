@@ -1,1 +1,1 @@
-# socket_tcp_client_server
+Sockets classes, for TCP client and TCP server.
