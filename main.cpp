@@ -254,6 +254,7 @@ int main(int argc, char **argv)
 				static const double mbits_factor = 8.0 / (1024.0 * 1024);
 				cout << "  " << bytes_per_second * mbits_factor << " Mbit/s, Record: " << record_bps * mbits_factor << " Mbit/s" << endl;
 
+				// could use an epsilon here, maybe
 				if (0 == bytes_per_second)
 				{
 					if (!stop)
