@@ -164,7 +164,10 @@ int main(int argc, char **argv)
 		TCP_client tc;
 
 		if (false == tc.init(target_host_string, port_number))
+		{
+			cleanup();
 			return 2;
+		}
 
 		while (!stop)
 		{
@@ -186,7 +189,10 @@ int main(int argc, char **argv)
 		TCP_server ts;
 
 		if (false == ts.init(port_number))
+		{
+			cleanup();
 			return 4;
+		}
 
 		while (!stop)
 		{
